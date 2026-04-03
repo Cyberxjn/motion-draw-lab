@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motion Draw Lab — Hand Gesture Drawing</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="app-header">
+    <div class="logo">
+      <span class="logo-icon">✦</span>
+      <span class="logo-text">Motion<em>Draw</em>Lab</span>
+    </div>
+    <div class="status-bar">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Initializing…</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost" id="btnUndo" title="Undo (Ctrl+Z)">↩ Undo</button>
+      <button class="btn-ghost" id="btnRedo" title="Redo (Ctrl+Y)">↪ Redo</button>
+      <button class="btn-save" id="btnSave" title="Save as PNG">⬇ Save</button>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN LAYOUT ═══ -->
+  <main class="app-main">
+
+    <!-- LEFT SIDEBAR — Tools -->
+    <aside class="sidebar sidebar-left">
+      <p class="sidebar-section-label">Draw Mode</p>
+
+      <button class="tool-btn active" data-mode="free" title="Free Draw">
+        <span class="tool-icon">✏️</span>
+        <span class="tool-name">Free Draw</span>
+      </button>
+      <button class="tool-btn" data-mode="circle" title="Circle">
+        <span class="tool-icon">⬤</span>
+        <span class="tool-name">Circle</span>
+      </button>
+      <button class="tool-btn" data-mode="square" title="Square">
+        <span class="tool-icon">■</span>
+        <span class="tool-name">Square</span>
+      </button>
+      <button class="tool-btn" data-mode="line" title="Line">
+        <span class="tool-icon">╱</span>
+        <span class="tool-name">Line</span>
+      </button>
+
+      <div class="divider"></div>
+      <p class="sidebar-section-label">Stroke</p>
+
+      <div class="size-control">
+        <label for="strokeSize">Size</label>
+        <input type="range" id="strokeSize" min="1" max="40" value="5" />
+        <span id="strokeSizeVal">5</span>
+      </div>
+
+      <div class="opacity-control">
+        <label for="strokeOpacity">Opacity</label>
+        <input type="range" id="strokeOpacity" min="10" max="100" value="100" />
+        <span id="strokeOpacityVal">100%</span>
+      </div>
+
+      <div class="divider"></div>
+      <p class="sidebar-section-label">Actions</p>
+
+      <button class="tool-btn danger" id="btnClear">
+        <span class="tool-icon">🗑</span>
+        <span class="tool-name">Clear</span>
+      </button>
+    </aside>
+
+    <!-- CANVAS AREA -->
+    <section class="canvas-wrapper">
+      <!-- Webcam video (hidden, used for hand tracking) -->
+      <video id="webcamVideo" autoplay muted playsinline></video>
+
+      <!-- Mirror webcam overlay (semi-transparent behind canvas) -->
+      <canvas id="mirrorCanvas" class="mirror-layer"></canvas>
+
+      <!-- Main drawing canvas -->
+      <canvas id="drawingCanvas" class="drawing-layer"></canvas>
+
+      <!-- Cursor/fingertip indicator -->
+      <div id="fingerCursor" class="finger-cursor"></div>
+
+      <!-- Gesture HUD -->
+      <div class="gesture-hud" id="gestureHud">
+        <span id="gestureLabel">—</span>
+      </div>
+
+      <!-- Onboarding overlay -->
+      <div class="onboarding-overlay" id="onboardingOverlay">
+        <div class="onboarding-card">
+          <div class="onboarding-icon">🖐</div>
+          <h2>Allow Camera Access</h2>
+          <p>Motion Draw Lab uses your webcam for real-time hand tracking.<br/>No data leaves your browser.</p>
+          <button class="btn-primary" id="btnStartCamera">Start Camera</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT SIDEBAR — Colors & Info -->
+    <aside class="sidebar sidebar-right">
+      <p class="sidebar-section-label">Color</p>
+
+      <div class="color-palette" id="colorPalette">
+        <button class="color-swatch active" style="--c:#ff3366" data-color="#ff3366"></button>
+        <button class="color-swatch" style="--c:#ff9500" data-color="#ff9500"></button>
+        <button class="color-swatch" style="--c:#ffde03" data-color="#ffde03"></button>
+        <button class="color-swatch" style="--c:#00e676" data-color="#00e676"></button>
+        <button class="color-swatch" style="--c:#00b0ff" data-color="#00b0ff"></button>
+        <button class="color-swatch" style="--c:#d500f9" data-color="#d500f9"></button>
+        <button class="color-swatch" style="--c:#ffffff" data-color="#ffffff"></button>
+        <button class="color-swatch" style="--c:#000000" data-color="#000000"></button>
+      </div>
+
+      <div class="custom-color">
+        <label for="customColor">Custom</label>
+        <input type="color" id="customColor" value="#ff3366" />
+      </div>
+
+      <div class="divider"></div>
+      <p class="sidebar-section-label">Gestures</p>
+
+      <div class="gesture-guide">
+        <div class="gesture-item">
+          <span class="g-icon">☝️</span>
+          <span class="g-desc">1 Finger — Draw</span>
+        </div>
+        <div class="gesture-item">
+          <span class="g-icon">✌️</span>
+          <span class="g-desc">2 Fingers — Move/Scale</span>
+        </div>
+        <div class="gesture-item">
+          <span class="g-icon">✋</span>
+          <span class="g-desc">Open Hand — Pause</span>
+        </div>
+        <div class="gesture-item">
+          <span class="g-icon">✊</span>
+          <span class="g-desc">Fist — Stop Draw</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <p class="sidebar-section-label">Stats</p>
+
+      <div class="stats-panel">
+        <div class="stat-row"><span>FPS</span><span id="statFps">—</span></div>
+        <div class="stat-row"><span>Objects</span><span id="statObjects">0</span></div>
+        <div class="stat-row"><span>Hand</span><span id="statHand">—</span></div>
+        <div class="stat-row"><span>Gesture</span><span id="statGesture">—</span></div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ═══ SCRIPTS ═══ -->
+  <script src="js/drawingEngine.js"></script>
+  <script src="js/gestureControl.js"></script>
+  <script src="js/handTracking.js"></script>
+  <script src="script.js"></script>
+
+</body>
+</html>
