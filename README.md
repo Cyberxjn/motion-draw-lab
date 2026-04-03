@@ -8,7 +8,7 @@ Draw in the air with your hand. Uses your webcam + MediaPipe Hands for real-time
 
 ## 🖥 Live Demo
 
-Deploy to GitHub Pages: `https://<username>.github.io/motion-draw-lab/`
+Deploy to GitHub Pages: `https://Cyberxjn.github.io/motion-draw-lab`
 
 ---
 
@@ -77,36 +77,6 @@ The drawing canvas sits on top of the webcam mirror. Gestures call `startDraw / 
 
 ---
 
-## 🚀 Deployment — GitHub Pages
-
-### Step 1: Create GitHub Repository
-
-1. Go to [github.com](https://github.com) and log in
-2. Click **New repository**
-3. Name it: `motion-draw-lab` (or `hand-gesture-draw`)
-4. Set to **Public**
-5. Click **Create repository**
-
-### Step 2: Push Code
-
-Open terminal in your project folder on Kali Linux:
-
-```bash
-# Navigate to your project
-cd ~/motion-draw-lab
-
-# Initialise git
-git init
-git add .
-git commit -m "🎨 Initial commit — Motion Draw Lab"
-
-# Add remote (replace YOUR_USERNAME)
-git remote add origin https://github.com/YOUR_USERNAME/motion-draw-lab.git
-
-# Push
-git branch -M main
-git push -u origin main
-```
 
 ### Step 3: Enable GitHub Pages
 
@@ -120,7 +90,7 @@ git push -u origin main
 
 After ~1–2 minutes:
 ```
-https://YOUR_USERNAME.github.io/motion-draw-lab/
+https://Cyberxjn.github.io/motion-draw-lab
 ```
 
 ---
