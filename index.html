@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Motion Draw Lab — Hand Gesture Drawing</title>
+  <title>Motion Draw Lab — v2</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
-  <!-- MediaPipe Hands -->
+  <!-- MediaPipe -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -19,55 +18,79 @@
     <div class="logo">
       <span class="logo-icon">✦</span>
       <span class="logo-text">Motion<em>Draw</em>Lab</span>
+      <span class="version-badge">v2</span>
     </div>
+
+    <!-- MODE INDICATOR PILL — shows current draw mode -->
+    <div class="mode-pill-wrap">
+      <span class="mode-pill-label">Mode</span>
+      <span class="mode-pill" id="modeIndicator" data-mode="free">FREE</span>
+    </div>
+
     <div class="status-bar">
       <span class="status-dot" id="statusDot"></span>
       <span class="status-label" id="statusLabel">Initializing…</span>
     </div>
+
     <div class="header-actions">
       <button class="btn-ghost" id="btnUndo" title="Undo (Ctrl+Z)">↩ Undo</button>
       <button class="btn-ghost" id="btnRedo" title="Redo (Ctrl+Y)">↪ Redo</button>
-      <button class="btn-save" id="btnSave" title="Save as PNG">⬇ Save</button>
+      <button class="btn-save" id="btnSave" title="Save PNG (Ctrl+S)">⬇ Save</button>
     </div>
   </header>
 
   <!-- ═══ MAIN LAYOUT ═══ -->
   <main class="app-main">
 
-    <!-- LEFT SIDEBAR — Tools -->
+    <!-- LEFT SIDEBAR -->
     <aside class="sidebar sidebar-left">
       <p class="sidebar-section-label">Draw Mode</p>
 
-      <button class="tool-btn active" data-mode="free" title="Free Draw">
+      <button class="tool-btn active" data-mode="free" title="Free Draw (F)">
         <span class="tool-icon">✏️</span>
         <span class="tool-name">Free Draw</span>
+        <span class="tool-key">F</span>
       </button>
-      <button class="tool-btn" data-mode="circle" title="Circle">
+      <button class="tool-btn" data-mode="circle" title="Circle (C)">
         <span class="tool-icon">⬤</span>
         <span class="tool-name">Circle</span>
+        <span class="tool-key">C</span>
       </button>
-      <button class="tool-btn" data-mode="square" title="Square">
+      <button class="tool-btn" data-mode="square" title="Square (Q)">
         <span class="tool-icon">■</span>
         <span class="tool-name">Square</span>
+        <span class="tool-key">Q</span>
       </button>
-      <button class="tool-btn" data-mode="line" title="Line">
+      <button class="tool-btn" data-mode="line" title="Line (L)">
         <span class="tool-icon">╱</span>
         <span class="tool-name">Line</span>
+        <span class="tool-key">L</span>
+      </button>
+
+      <!-- ★ NEW ERASE BUTTON -->
+      <button class="tool-btn erase-btn" data-mode="erase" title="Erase (E)">
+        <span class="tool-icon">⌫</span>
+        <span class="tool-name">Eraser</span>
+        <span class="tool-key">E</span>
       </button>
 
       <div class="divider"></div>
       <p class="sidebar-section-label">Stroke</p>
 
-      <div class="size-control">
-        <label for="strokeSize">Size</label>
+      <div class="slider-control">
+        <div class="slider-header"><label for="strokeSize">Size</label><span id="strokeSizeVal">5</span></div>
         <input type="range" id="strokeSize" min="1" max="40" value="5" />
-        <span id="strokeSizeVal">5</span>
       </div>
 
-      <div class="opacity-control">
-        <label for="strokeOpacity">Opacity</label>
+      <div class="slider-control">
+        <div class="slider-header"><label for="strokeOpacity">Opacity</label><span id="strokeOpacityVal">100%</span></div>
         <input type="range" id="strokeOpacity" min="10" max="100" value="100" />
-        <span id="strokeOpacityVal">100%</span>
+      </div>
+
+      <!-- ★ NEW ERASE SIZE SLIDER -->
+      <div class="slider-control erase-slider">
+        <div class="slider-header"><label for="eraseSize">Eraser</label><span id="eraseSizeVal">30px</span></div>
+        <input type="range" id="eraseSize" min="5" max="100" value="30" />
       </div>
 
       <div class="divider"></div>
@@ -75,22 +98,17 @@
 
       <button class="tool-btn danger" id="btnClear">
         <span class="tool-icon">🗑</span>
-        <span class="tool-name">Clear</span>
+        <span class="tool-name">Clear All</span>
       </button>
     </aside>
 
     <!-- CANVAS AREA -->
     <section class="canvas-wrapper">
-      <!-- Webcam video (hidden, used for hand tracking) -->
       <video id="webcamVideo" autoplay muted playsinline></video>
-
-      <!-- Mirror webcam overlay (semi-transparent behind canvas) -->
       <canvas id="mirrorCanvas" class="mirror-layer"></canvas>
-
-      <!-- Main drawing canvas -->
       <canvas id="drawingCanvas" class="drawing-layer"></canvas>
 
-      <!-- Cursor/fingertip indicator -->
+      <!-- Finger cursor (mode-aware) -->
       <div id="fingerCursor" class="finger-cursor"></div>
 
       <!-- Gesture HUD -->
@@ -98,18 +116,30 @@
         <span id="gestureLabel">—</span>
       </div>
 
-      <!-- Onboarding overlay -->
+      <!-- FPS badge -->
+      <div class="fps-badge" id="fpsBadge">
+        <span id="statFps">—</span> FPS
+      </div>
+
+      <!-- Onboarding -->
       <div class="onboarding-overlay" id="onboardingOverlay">
         <div class="onboarding-card">
           <div class="onboarding-icon">🖐</div>
-          <h2>Allow Camera Access</h2>
-          <p>Motion Draw Lab uses your webcam for real-time hand tracking.<br/>No data leaves your browser.</p>
+          <h2>Motion Draw Lab</h2>
+          <p>Real-time hand gesture drawing.<br/>No plugins. No uploads. 100% browser.</p>
+          <div class="gesture-preview-grid">
+            <div class="gp-item"><span>☝️</span><span>Draw</span></div>
+            <div class="gp-item"><span>🤟</span><span>Erase</span></div>
+            <div class="gp-item"><span>✌️</span><span>Move</span></div>
+            <div class="gp-item"><span>✊</span><span>Stop</span></div>
+          </div>
           <button class="btn-primary" id="btnStartCamera">Start Camera</button>
+          <p class="privacy-note">🔒 No data leaves your browser</p>
         </div>
       </div>
     </section>
 
-    <!-- RIGHT SIDEBAR — Colors & Info -->
+    <!-- RIGHT SIDEBAR -->
     <aside class="sidebar sidebar-right">
       <p class="sidebar-section-label">Color</p>
 
@@ -121,7 +151,7 @@
         <button class="color-swatch" style="--c:#00b0ff" data-color="#00b0ff"></button>
         <button class="color-swatch" style="--c:#d500f9" data-color="#d500f9"></button>
         <button class="color-swatch" style="--c:#ffffff" data-color="#ffffff"></button>
-        <button class="color-swatch" style="--c:#000000" data-color="#000000"></button>
+        <button class="color-swatch" style="--c:#111118" data-color="#111118"></button>
       </div>
 
       <div class="custom-color">
@@ -133,21 +163,29 @@
       <p class="sidebar-section-label">Gestures</p>
 
       <div class="gesture-guide">
-        <div class="gesture-item">
+        <div class="gesture-item g-draw">
           <span class="g-icon">☝️</span>
           <span class="g-desc">1 Finger — Draw</span>
         </div>
-        <div class="gesture-item">
+        <div class="gesture-item g-erase">
+          <span class="g-icon">🤟</span>
+          <span class="g-desc">3 Fingers — Erase</span>
+        </div>
+        <div class="gesture-item g-move">
           <span class="g-icon">✌️</span>
-          <span class="g-desc">2 Fingers — Move/Scale</span>
+          <span class="g-desc">2 Fingers — Move</span>
         </div>
-        <div class="gesture-item">
+        <div class="gesture-item g-scale">
+          <span class="g-icon">🤌</span>
+          <span class="g-desc">Pinch — Scale</span>
+        </div>
+        <div class="gesture-item g-pause">
           <span class="g-icon">✋</span>
-          <span class="g-desc">Open Hand — Pause</span>
+          <span class="g-desc">Open — Pause</span>
         </div>
-        <div class="gesture-item">
+        <div class="gesture-item g-stop">
           <span class="g-icon">✊</span>
-          <span class="g-desc">Fist — Stop Draw</span>
+          <span class="g-desc">Fist — Idle</span>
         </div>
       </div>
 
@@ -155,20 +193,18 @@
       <p class="sidebar-section-label">Stats</p>
 
       <div class="stats-panel">
-        <div class="stat-row"><span>FPS</span><span id="statFps">—</span></div>
-        <div class="stat-row"><span>Objects</span><span id="statObjects">0</span></div>
-        <div class="stat-row"><span>Hand</span><span id="statHand">—</span></div>
-        <div class="stat-row"><span>Gesture</span><span id="statGesture">—</span></div>
+        <div class="stat-row"><span>FPS</span><span id="statFps" class="stat-val">—</span></div>
+        <div class="stat-row"><span>Objects</span><span id="statObjects" class="stat-val">0</span></div>
+        <div class="stat-row"><span>Hand</span><span id="statHand" class="stat-val">—</span></div>
+        <div class="stat-row"><span>Gesture</span><span id="statGesture" class="stat-val">—</span></div>
       </div>
     </aside>
 
   </main>
 
-  <!-- ═══ SCRIPTS ═══ -->
   <script src="js/drawingEngine.js"></script>
   <script src="js/gestureControl.js"></script>
   <script src="js/handTracking.js"></script>
   <script src="script.js"></script>
-
 </body>
 </html>
