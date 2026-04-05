@@ -153,4 +153,4 @@ Do **not** open `index.html` directly with `file://` — camera access will be b
 
 ## 📝 License
 
-MIT — free to use, modify, and deploy.
+MIT — free to use , modify , and deploy.
